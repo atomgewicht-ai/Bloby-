@@ -14,11 +14,14 @@ Ein kleines Arcade-Volleyballspiel für den Browser – eine einzige HTML-Datei,
 
 ## Steuerung
 
-| | Laufen | Springen |
-|---|---|---|
-| Links (grün) | `A` / `D` | `W` |
-| Rechts (orange) | `←` / `→` | `↑` |
+Das Spiel ist für Smartphones im Hochformat gebaut und füllt den ganzen Bildschirm.
 
-`P` pausiert, `M` schaltet den Ton. Im Einzelspiel funktionieren beide Tastensätze, auf Touch-Geräten erscheinen Bildschirmtasten.
+- **Finger ziehen** – der Frosch läuft zum Finger (am besten unten auf dem Sand, dann verdeckt der Daumen nichts)
+- **Nach oben wischen** – springen
+- **Mit einem zweiten Finger tippen** – ebenfalls springen
 
-Modi: 1 Spieler gegen den Computer (drei Schwierigkeitsstufen), 2 Spieler an einer Tastatur, Demo (Computer gegen Computer).
+Im 2-Spieler-Modus teilen sich beide ein Handy: Jeder steuert mit dem Finger auf seiner Bildschirmhälfte.
+
+Am Rechner geht es auch mit Maus oder Tastatur: `A`/`D`/`W` (grün), `←`/`→`/`↑` (orange), `P` Pause, `M` Ton.
+
+Modi: 1 Spieler gegen den Computer (drei Schwierigkeitsstufen), 2 Spieler, Demo (Computer gegen Computer).

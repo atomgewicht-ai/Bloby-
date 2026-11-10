@@ -2,87 +2,87 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#6ec3f4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Froschvolley</title>
 <style>
-  :root { --ink:#17324a; --panel:rgba(255,255,255,.93); --accent:#2f9e57; --accent2:#e2703a; }
-  * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; background:#10212f; color:var(--ink);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overscroll-behavior:none; }
-  body { display:flex; align-items:center; justify-content:center; }
-  #stage { position:relative; width:min(100vw, calc(100vh * 1.6)); aspect-ratio:8/5;
-    touch-action:none; user-select:none; -webkit-user-select:none; }
-  canvas { width:100%; height:100%; display:block; border-radius:10px; }
+  :root { --ink:#17324a; --panel:rgba(255,255,255,.94); --accent:#2f9e57; --accent2:#e2703a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#10212f; color:var(--ink); overflow:hidden;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overscroll-behavior:none; touch-action:none; user-select:none; -webkit-user-select:none;
+    -webkit-touch-callout:none; }
+  body { display:flex; align-items:center; justify-content:center; position:fixed; inset:0; }
+  #stage { position:relative; touch-action:none; }
+  canvas { width:100%; height:100%; display:block; }
+  #probe { position:fixed; top:0; left:0; width:0; height:env(safe-area-inset-top, 0px); visibility:hidden; }
   .overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    background:rgba(16,33,47,.45); border-radius:10px; }
+    background:rgba(16,33,47,.45); padding:16px; }
   .overlay[hidden] { display:none; }
-  .card { background:var(--panel); border-radius:16px; padding:clamp(12px,3vw,28px) clamp(16px,4vw,36px);
-    text-align:center; max-width:92%; max-height:96%; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.35); }
-  h1 { margin:0 0 .2em; font-size:clamp(22px,5vw,44px); letter-spacing:.02em; }
+  .card { background:var(--panel); border-radius:20px; padding:22px 18px; width:100%; max-width:380px;
+    text-align:center; max-height:100%; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+  h1 { margin:0 0 .3em; font-size:36px; letter-spacing:.02em; }
   h1 span { color:var(--accent); }
-  p { margin:.4em 0; font-size:clamp(12px,1.9vw,16px); }
-  .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:.8em 0; }
-  button { font:inherit; font-weight:700; font-size:clamp(13px,2.1vw,18px); border:0; border-radius:10px;
-    padding:.6em 1.1em; cursor:pointer; background:var(--accent); color:#fff; }
+  p { margin:.5em 0; font-size:15px; line-height:1.4; }
+  .row { display:flex; gap:8px; justify-content:center; margin:14px 0; }
+  .col { display:flex; flex-direction:column; gap:10px; margin:14px 0; }
+  button { font:inherit; font-weight:700; font-size:18px; border:0; border-radius:14px; min-height:52px;
+    padding:.6em 1em; cursor:pointer; background:var(--accent); color:#fff; touch-action:manipulation; }
+  .row button { flex:1; font-size:15px; min-height:44px; padding:.4em .2em; }
   button.alt { background:var(--accent2); }
   button.ghost { background:#dfe7ee; color:var(--ink); }
-  button.sel { outline:3px solid var(--ink); }
-  button:focus-visible { outline:3px solid #ffd23f; }
-  kbd { background:#e8eef3; border-radius:5px; padding:.05em .45em; border:1px solid #c3cfd9; font:inherit; font-weight:700; }
-  .keys { display:grid; grid-template-columns:auto auto; gap:.2em 1.2em; justify-content:center; text-align:left;
-    font-size:clamp(12px,1.9vw,16px); }
-  #touch { position:absolute; inset:auto 0 0 0; display:none; justify-content:space-between; padding:2%;
-    pointer-events:none; }
-  #touch.on { display:flex; }
-  #touch div { display:flex; gap:10px; }
-  #touch button { pointer-events:auto; width:clamp(52px,13vw,84px); height:clamp(52px,13vw,84px); padding:0;
-    border-radius:50%; background:rgba(255,255,255,.45); color:var(--ink); font-size:clamp(22px,5vw,34px);
-    touch-action:none; }
-  #touch button.down { background:rgba(255,255,255,.8); }
-  #corner { position:absolute; top:2%; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
-  #corner button { padding:.3em .6em; background:rgba(255,255,255,.55); color:var(--ink); font-size:clamp(11px,1.7vw,15px); }
+  button.sel { background:var(--ink); color:#fff; }
+  button:active { filter:brightness(.9); }
+  .how { text-align:left; background:#eef3f7; border-radius:14px; padding:10px 14px; font-size:14px; line-height:1.5; }
+  .how b { color:var(--accent); }
+  .desk { font-size:12px; opacity:.7; }
+  @media (pointer:coarse) { .desk { display:none; } }
+  #corner { position:absolute; top:calc(env(safe-area-inset-top, 0px) + 10px); left:50%;
+    transform:translateX(-50%); display:flex; gap:8px; }
+  #corner button { min-height:0; width:40px; height:40px; padding:0; border-radius:50%;
+    background:rgba(255,255,255,.55); color:var(--ink); font-size:16px; }
 </style>
 </head>
 <body>
+<div id="probe"></div>
 <div id="stage">
-  <canvas id="c" width="800" height="500"></canvas>
+  <canvas id="c"></canvas>
 
   <div id="corner">
-    <button id="btnPause" title="Pause (P)">II</button>
-    <button id="btnSound" title="Ton (M)">♪</button>
-  </div>
-
-  <div id="touch">
-    <div><button data-k="left">◀</button><button data-k="right">▶</button></div>
-    <div><button data-k="jump">▲</button></div>
+    <button id="btnPause" aria-label="Pause">II</button>
+    <button id="btnSound" aria-label="Ton">♪</button>
   </div>
 
   <div class="overlay" id="menu">
     <div class="card">
       <h1>Frosch<span>volley</span></h1>
-      <p>Halte den Ball in der Luft und bring ihn übers Netz. Höchstens 3 Berührungen pro Seite, wer zuerst <b>15</b> Punkte (mit 2 Vorsprung) hat, gewinnt.</p>
+      <p>Bring den Ball übers Netz. Höchstens 3 Berührungen pro Seite, gespielt wird bis <b>15</b> (mit 2 Vorsprung).</p>
+      <div class="how">
+        <b>Finger ziehen</b> – dein Frosch läuft zum Finger<br>
+        <b>Nach oben wischen</b> – springen<br>
+        <b>Zweiter Finger tippt</b> – auch springen
+      </div>
       <div class="row" id="diff">
         <button class="ghost" data-d="0">Leicht</button>
         <button class="ghost sel" data-d="1">Mittel</button>
         <button class="ghost" data-d="2">Schwer</button>
       </div>
-      <div class="row">
+      <div class="col">
         <button id="btn1p">1 Spieler</button>
-        <button id="btn2p" class="alt">2 Spieler</button>
-        <button id="btnDemo" class="ghost">Demo</button>
+        <button id="btn2p" class="alt">2 Spieler · ein Handy</button>
+        <button id="btnDemo" class="ghost">Demo ansehen</button>
       </div>
-      <div class="keys">
-        <span>Links (grün)</span><span><kbd>A</kbd> <kbd>D</kbd> laufen, <kbd>W</kbd> springen</span>
-        <span>Rechts (orange)</span><span><kbd>←</kbd> <kbd>→</kbd> laufen, <kbd>↑</kbd> springen</span>
-        <span>Sonstiges</span><span><kbd>P</kbd> Pause, <kbd>M</kbd> Ton</span>
-      </div>
+      <p class="desk">Tastatur: A/D/W (grün) · ←/→/↑ (orange) · P Pause · M Ton</p>
     </div>
   </div>
 
   <div class="overlay" id="pause" hidden>
     <div class="card">
       <h1>Pause</h1>
-      <div class="row">
+      <div class="col">
         <button id="btnResume">Weiter</button>
         <button id="btnQuit" class="ghost">Menü</button>
       </div>
@@ -92,8 +92,8 @@
   <div class="overlay" id="over" hidden>
     <div class="card">
       <h1 id="overTitle"></h1>
-      <p id="overScore"></p>
-      <div class="row">
+      <p id="overScore" style="font-size:28px;font-weight:800"></p>
+      <div class="col">
         <button id="btnAgain">Nochmal</button>
         <button id="btnMenu" class="ghost">Menü</button>
       </div>
@@ -106,14 +106,16 @@
 'use strict';
 
 // ---------- Konstanten (logische Einheiten: px, px/s) ----------
-const W = 800, H = 500, GROUND = 440;
-const NETX = 400, NETHW = 5, NETTOP = 300;
-const PR = 34, BR = 24;                 // Radius Frosch / Ball
-const P_SPEED = 340, P_JUMP = 820, P_GRAV = 2200;
-const B_GRAV = 900, B_HIT = 600, B_MAX = 1000;
+// Hochformat: feste Breite, die Höhe richtet sich nach dem Bildschirm.
+const W = 450, NETX = W / 2, NETHW = 5, NET_H = 125, PAD = 150;   // PAD = Daumenzone unter dem Feld
+let H = 800, GROUND = H - PAD, NETTOP = GROUND - NET_H, safeTop = 0;
+const PR = 30, BR = 21;                 // Radius Frosch / Ball
+const P_SPEED = 320, P_JUMP = 770, P_GRAV = 2200;
+const B_GRAV = 800, B_HIT = 500, B_MAX = 850;
 const WIN_SCORE = 15, MAX_TOUCHES = 3;
 const STEP = 1 / 120;
 
+const stage = document.getElementById('stage');
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const $ = id => document.getElementById(id);
@@ -121,10 +123,11 @@ const $ = id => document.getElementById(id);
 // ---------- Zustand ----------
 const mkPlayer = (side, color, belly, name) => ({
   side, color, belly, name,
-  homeX: NETX + side * 200, x: NETX + side * 200, y: GROUND - PR, vx: 0, vy: 0,
-  score: 0, touches: 0, cool: 0, ai: false, blink: 0,
-  aiOff: 20, aiErr: 0, aiJump: false,
+  homeX: NETX + side * 112, x: NETX + side * 112, y: GROUND - PR, vx: 0, vy: 0,
+  score: 0, touches: 0, cool: 0, ai: false,
+  aiErr: 0, aiJump: false, aiSpeed: 1,
   in: { left: false, right: false, jump: false },
+  targetX: null, jumpBuf: 0,           // Touch-Steuerung
 });
 const P1 = mkPlayer(-1, '#3fae5f', '#c9efb0', 'Grün');
 const P2 = mkPlayer(1, '#e2793f', '#ffe0b8', 'Orange');
@@ -133,15 +136,15 @@ const ball = { x: 0, y: 0, px: 0, vx: 0, vy: 0, rot: 0 };
 
 let state = 'menu';          // menu | serve | play | point | over
 let paused = false, timer = 0, server = P1, message = '', msgT = 0;
-let difficulty = 1, mode = '1p', soundOn = true;
+let difficulty = 1, mode = '1p', soundOn = true, showHint = true;
 let particles = [];
 const DIFF = [
-  { speed: .72, err: 22, jump: .15 },
-  { speed: .9,  err: 10, jump: .4 },
+  { speed: .7,  err: 20, jump: .15 },
+  { speed: .88, err: 9,  jump: .4 },
   { speed: 1,   err: 3,  jump: .65 },
 ];
 
-// ---------- Ton ----------
+// ---------- Ton & Vibration ----------
 let actx = null;
 function beep(freq, dur, type = 'sine', vol = .15, slide = 0) {
   if (!soundOn) return;
@@ -155,6 +158,7 @@ function beep(freq, dur, type = 'sine', vol = .15, slide = 0) {
     o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
   } catch (e) { /* kein Ton verfügbar */ }
 }
+const buzz = ms => { try { if (soundOn && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} };
 const sfx = {
   hit: () => beep(300 + Math.random() * 120, .09, 'triangle', .2, 200),
   net: () => beep(140, .08, 'square', .06),
@@ -167,30 +171,31 @@ function startGame(m) {
   mode = m;
   P1.ai = m === 'demo'; P2.ai = m !== '2p';
   players.forEach(p => { p.score = 0; });
-  server = P1; particles = [];
+  server = P1; particles = []; showHint = m !== 'demo';
   $('menu').hidden = true; $('over').hidden = true; $('pause').hidden = true;
   paused = false;
-  updateTouchUI();
   newRally();
 }
 function newRally() {
-  players.forEach(p => { p.x = p.homeX; p.y = GROUND - PR; p.vx = p.vy = 0; p.touches = 0; p.cool = 0; rollAI(p); });
-  ball.x = ball.px = server.homeX; ball.y = 250; ball.vx = ball.vy = 0;
+  players.forEach(p => {
+    p.x = p.homeX; p.y = GROUND - PR; p.vx = p.vy = 0; p.touches = 0; p.cool = 0; p.jumpBuf = 0; rollAI(p);
+  });
+  ball.x = ball.px = server.homeX; ball.y = GROUND - 170; ball.vx = ball.vy = 0;
   state = 'serve';
 }
 function toMenu() {
   state = 'menu'; paused = false;
   $('menu').hidden = false; $('over').hidden = true; $('pause').hidden = true;
-  updateTouchUI();
 }
 function setPaused(v) {
   if (state === 'menu' || state === 'over') return;
   paused = v; $('pause').hidden = !v;
+  if (v) releaseAll();
 }
 function award(winner, text) {
   if (state !== 'play' && state !== 'serve') return;
-  winner.score++; server = winner; state = 'point'; timer = 1.5;
-  message = text; msgT = 1.5; sfx.point();
+  winner.score++; server = winner; state = 'point'; timer = 1.4;
+  message = text; msgT = 1.4; sfx.point(); buzz(30);
 }
 function afterPoint() {
   const lead = Math.abs(P1.score - P2.score), top = Math.max(P1.score, P2.score);
@@ -200,7 +205,7 @@ function afterPoint() {
     $('overTitle').textContent = `${w.name} gewinnt!`;
     $('overTitle').style.color = w.color;
     $('overScore').textContent = `${P1.score} : ${P2.score}`;
-    $('over').hidden = false; sfx.win(); updateTouchUI();
+    $('over').hidden = false; sfx.win(); releaseAll();
   } else newRally();
 }
 function rollAI(p) {
@@ -209,22 +214,22 @@ function rollAI(p) {
   p.aiJump = Math.random() < d.jump;
 }
 function onTouch(p) {
-  sfx.hit();
+  sfx.hit(); if (!p.ai) buzz(8);
   for (let i = 0; i < 6; i++) particles.push({
-    x: ball.x, y: ball.y, vx: (Math.random() - .5) * 260, vy: (Math.random() - .7) * 260, t: .35, c: '#fff' });
-  if (state === 'serve') state = 'play';
+    x: ball.x, y: ball.y, vx: (Math.random() - .5) * 240, vy: (Math.random() - .7) * 240, t: .35, c: '#fff' });
+  if (state === 'serve') { state = 'play'; showHint = false; }
   if (state !== 'play') return;
   const other = p === P1 ? P2 : P1;
   other.touches = 0; p.touches++;
   players.forEach(rollAI);
-  if (p.touches > MAX_TOUCHES) award(other, 'Zu viele Berührungen!');
+  if (p.touches > MAX_TOUCHES) award(other, 'Zu oft berührt!');
 }
 
 // ---------- KI ----------
 function predict(targetY) {
   let x = ball.x, y = ball.y, vx = ball.vx, vy = ball.vy;
   const dt = 1 / 60;
-  for (let i = 0; i < 360; i++) {
+  for (let i = 0; i < 400; i++) {
     if (y >= targetY && vy > 0) break;
     vy += B_GRAV * dt;
     const nx = x + vx * dt; y += vy * dt;
@@ -236,43 +241,45 @@ function predict(targetY) {
   return x;
 }
 function think(p) {
-  const s = p.side, d = DIFF[difficulty], inp = p.in;
+  const s = p.side, inp = p.in, contact = PR + BR;
   let target = p.homeX, jump = false;
-  const contact = PR + BR;
   if (state === 'serve') {
     if (server === p) {
-      target = ball.x + s * 22;
-      jump = Math.abs(p.x - target) < 8;
+      target = ball.x + s * 18;
+      jump = Math.abs(p.x - target) < 7;
     }
   } else if (state === 'play') {
     const land = predict(GROUND - 2 * PR - BR + 8);
     const mine = (land - NETX) * s > 0 || ((ball.x - NETX) * s > 0 && ball.y > NETTOP);
     if (mine) {
       // Abschlagwinkel so wählen, dass der Ball übers Netz kommt
-      const need = Math.min(Math.abs(land - NETX) + 140, 390);
+      const need = Math.min(Math.abs(land - NETX) + 95, 300);
       const theta = .5 * Math.asin(Math.min(1, need * B_GRAV / (B_HIT * B_HIT)));
       const off = contact * Math.sin(Math.max(theta, .12));
       target = land + s * off + p.aiErr;
       const dx = Math.abs(ball.x + s * off - p.x), dy = p.y - ball.y;
-      if (p.aiJump && ball.vy > 0 && dx < 30 && dy > 110 && dy < 190) jump = true;
-      // Notfall: Ball fällt außer Reichweite
-      if (ball.vy > 0 && dy < 120 && dx > 50 && dx < 120) jump = true;
+      if (p.aiJump && ball.vy > 0 && dx < 26 && dy > 95 && dy < 165) jump = true;
+      if (ball.vy > 0 && dy < 105 && dx > 45 && dx < 105) jump = true;   // Notfall
     }
   }
-  const lo = s < 0 ? PR : NETX + NETHW + PR, hi = s < 0 ? NETX - NETHW - PR : W - PR;
-  target = Math.max(lo, Math.min(hi, target));
   const diff = target - p.x;
-  inp.left = diff < -5; inp.right = diff > 5; inp.jump = jump;
-  p.aiSpeed = d.speed;
+  inp.left = diff < -4; inp.right = diff > 4; inp.jump = jump;
+  p.aiSpeed = DIFF[difficulty].speed;
 }
 
 // ---------- Physik ----------
 function stepPlayer(p, dt) {
   if (p.ai) think(p);
-  const inp = p.in, sp = P_SPEED * (p.ai ? p.aiSpeed : 1);
-  p.vx = ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * sp;
+  const inp = p.in;
+  if (!p.ai && p.targetX !== null) {
+    const diff = p.targetX - p.x;                      // dem Finger hinterherlaufen
+    p.vx = Math.max(-P_SPEED, Math.min(P_SPEED, diff / dt));
+  } else {
+    p.vx = ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * P_SPEED * (p.ai ? p.aiSpeed : 1);
+  }
   const onGround = p.y >= GROUND - PR - .01;
-  if (inp.jump && onGround) p.vy = -P_JUMP;
+  if ((inp.jump || p.jumpBuf > 0) && onGround) { p.vy = -P_JUMP; p.jumpBuf = 0; }
+  if (p.jumpBuf > 0) p.jumpBuf -= dt;
   p.vy += P_GRAV * dt;
   p.x += p.vx * dt; p.y += p.vy * dt;
   if (p.y > GROUND - PR) { p.y = GROUND - PR; p.vy = 0; }
@@ -288,7 +295,6 @@ function stepBall(dt) {
     b.x += b.vx * dt; b.y += b.vy * dt;
     b.rot += b.vx * dt / BR;
   }
-  // Wände
   if (b.x < BR) { b.x = BR; b.vx = Math.abs(b.vx); }
   if (b.x > W - BR) { b.x = W - BR; b.vx = -Math.abs(b.vx); }
   // Netz
@@ -324,7 +330,7 @@ function stepBall(dt) {
     b.y = GROUND - BR;
     if (state === 'play') {
       for (let i = 0; i < 12; i++) particles.push({
-        x: b.x, y: GROUND, vx: (Math.random() - .5) * 320, vy: -Math.random() * 260, t: .5, c: '#e9d59a' });
+        x: b.x, y: GROUND, vx: (Math.random() - .5) * 300, vy: -Math.random() * 240, t: .5, c: '#fff6d8' });
       award(b.x < NETX ? P2 : P1, 'Punkt!');
     }
     b.vy = -Math.abs(b.vy) * .55; b.vx *= .8;
@@ -341,37 +347,36 @@ function step(dt) {
 }
 
 // ---------- Zeichnen ----------
-const clouds = [[120, 70, 1], [420, 45, .7], [650, 95, 1.2]];
+const clouds = [[60, .16, 1], [300, .09, .7], [200, .30, 1.1], [380, .42, .8]];
 function drawBackground(t) {
   const g = ctx.createLinearGradient(0, 0, 0, GROUND);
-  g.addColorStop(0, '#6ec3f4'); g.addColorStop(1, '#d8f1ff');
+  g.addColorStop(0, '#58b4ee'); g.addColorStop(1, '#dff3ff');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  // Sonne
-  ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(690, 80, 38, 0, 7); ctx.fill();
-  // Wolken
+  ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(W - 80, GROUND * .2, 34, 0, 7); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,.85)';
-  for (const [cx, cy, s] of clouds) {
-    const x = ((cx + t * 6 * s) % (W + 200)) - 100;
-    for (const [ox, oy, rx, ry] of [[0, 0, 46, 16], [26, -12, 28, 16], [-24, -8, 22, 13]]) {
+  for (const [cx, fy, s] of clouds) {
+    const x = ((cx + t * 5 * s) % (W + 160)) - 80, cy = GROUND * fy;
+    for (const [ox, oy, rx, ry] of [[0, 0, 42, 14], [24, -11, 25, 14], [-22, -7, 20, 12]]) {
       ctx.beginPath(); ctx.ellipse(x + ox * s, cy + oy * s, rx * s, ry * s, 0, 0, 7); ctx.fill();
     }
   }
   // Hügel
   ctx.fillStyle = '#9ad48a';
   ctx.beginPath(); ctx.moveTo(0, GROUND);
-  ctx.quadraticCurveTo(180, 300, 380, GROUND - 40); ctx.quadraticCurveTo(600, 330, 800, GROUND - 60);
+  ctx.quadraticCurveTo(100, GROUND - 130, 215, GROUND - 35); ctx.quadraticCurveTo(340, GROUND - 110, W, GROUND - 55);
   ctx.lineTo(W, GROUND); ctx.fill();
   // Schilf
-  ctx.strokeStyle = '#5c9a55'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  for (let i = 0; i < 14; i++) {
-    const x = 20 + i * 61 + (i % 3) * 9, h = 40 + (i * 37 % 30), sway = Math.sin(t * 1.3 + i) * 4;
+  ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (let i = 0; i < 8; i++) {
+    const x = 18 + i * 58 + (i % 3) * 8, h = 38 + (i * 37 % 30), sway = Math.sin(t * 1.3 + i) * 4;
+    ctx.strokeStyle = '#5c9a55';
     ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.quadraticCurveTo(x, GROUND - h / 2, x + sway, GROUND - h); ctx.stroke();
     ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.ellipse(x + sway, GROUND - h, 3.5, 9, 0, 0, 7); ctx.fill();
   }
-  // Boden
+  // Sand + Daumenzone
   ctx.fillStyle = '#e9d59a'; ctx.fillRect(0, GROUND, W, H - GROUND);
   ctx.fillStyle = '#d9c382'; ctx.fillRect(0, GROUND, W, 5);
-  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(8, GROUND + 22, W - 16, 3);
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(8, GROUND + 20, W - 16, 3);
 }
 function drawNet() {
   ctx.fillStyle = '#7a5230';
@@ -380,21 +385,18 @@ function drawNet() {
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(NETX, NETTOP, NETHW + 1.5, 0, 7); ctx.fill();
 }
 function drawFrog(p, t) {
+  const k = PR / 34;
   const stretch = Math.max(-.14, Math.min(.16, -p.vy / 4500));
   const sy = 1 + stretch, sx = 1 / sy;
-  // Schatten
   const hgt = (GROUND - PR - p.y) / 200;
   ctx.fillStyle = `rgba(0,0,0,${.2 - Math.min(.12, hgt * .1)})`;
   ctx.beginPath(); ctx.ellipse(p.x, GROUND + 4, PR * (1 - Math.min(.4, hgt * .3)), 6, 0, 0, 7); ctx.fill();
 
-  ctx.save(); ctx.translate(p.x, p.y + PR); ctx.scale(sx, sy); ctx.translate(0, -PR);
-  // Füße
+  ctx.save(); ctx.translate(p.x, p.y + PR); ctx.scale(sx * k, sy * k); ctx.translate(0, -34);
   ctx.fillStyle = p.color;
-  ctx.beginPath(); ctx.ellipse(-20, PR - 3, 13, 6, 0, 0, 7); ctx.ellipse(20, PR - 3, 13, 6, 0, 0, 7); ctx.fill();
-  // Körper
-  ctx.beginPath(); ctx.ellipse(0, 2, PR + 2, PR - 2, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = p.belly; ctx.beginPath(); ctx.ellipse(0, 14, PR - 10, PR - 16, 0, 0, 7); ctx.fill();
-  // Augen
+  ctx.beginPath(); ctx.ellipse(-20, 31, 13, 6, 0, 0, 7); ctx.ellipse(20, 31, 13, 6, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 2, 36, 32, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = p.belly; ctx.beginPath(); ctx.ellipse(0, 14, 24, 18, 0, 0, 7); ctx.fill();
   const ang = Math.atan2(ball.y - (p.y - 26), ball.x - p.x);
   const blink = (t * 1.1 + p.side) % 3.7 < .12;
   for (const ex of [-15, 15]) {
@@ -408,7 +410,6 @@ function drawFrog(p, t) {
       ctx.arc(ex + Math.cos(ang) * 4, -25 + Math.sin(ang) * 4, 4.6, 0, 7); ctx.fill();
     }
   }
-  // Mund
   ctx.strokeStyle = '#17324a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.arc(0, -6, 17, .25 * Math.PI, .75 * Math.PI); ctx.stroke();
   ctx.restore();
@@ -417,7 +418,7 @@ function drawBall() {
   const b = ball;
   if (b.y < -BR) {                       // Ball über dem Bildrand
     ctx.fillStyle = '#e2443a';
-    ctx.beginPath(); ctx.moveTo(b.x, 6); ctx.lineTo(b.x - 9, 22); ctx.lineTo(b.x + 9, 22); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(b.x, safeTop + 6); ctx.lineTo(b.x - 9, safeTop + 22); ctx.lineTo(b.x + 9, safeTop + 22); ctx.fill();
     return;
   }
   const hgt = Math.max(0, (GROUND - BR - b.y) / 300);
@@ -429,41 +430,58 @@ function drawBall() {
     ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.moveTo(0, 0);
     ctx.arc(0, 0, BR, i * Math.PI / 3, (i + 1) * Math.PI / 3); ctx.fill();
   }
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, 7); ctx.fill();
   ctx.restore();
   ctx.strokeStyle = 'rgba(23,50,74,.5)'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(b.x, b.y, BR, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,.45)';
-  ctx.beginPath(); ctx.ellipse(b.x - 8, b.y - 9, 7, 4, -.6, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(b.x - 7, b.y - 8, 6, 3.5, -.6, 0, 7); ctx.fill();
+}
+function drawTouchMarks() {
+  // Zeigt, wohin der Frosch läuft – direkt unter dem Finger auf dem Sand.
+  for (const p of players) {
+    if (p.ai || p.targetX === null) continue;
+    const lo = p.side < 0 ? PR : NETX + NETHW + PR, hi = p.side < 0 ? NETX - NETHW - PR : W - PR;
+    const x = Math.max(lo, Math.min(hi, p.targetX));
+    ctx.fillStyle = p.color; ctx.globalAlpha = .55;
+    ctx.beginPath(); ctx.moveTo(x, GROUND + 10); ctx.lineTo(x - 9, GROUND + 24); ctx.lineTo(x + 9, GROUND + 24); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
 }
 function drawHUD() {
-  ctx.textBaseline = 'top'; ctx.font = '800 54px system-ui, sans-serif';
-  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  const top = safeTop + 18;
+  ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+  ctx.font = '800 50px system-ui, sans-serif';
   for (const p of players) {
-    const x = NETX + p.side * 300;
-    ctx.textAlign = 'center';
-    ctx.strokeText(p.score, x, 14); ctx.fillStyle = p.color; ctx.fillText(p.score, x, 14);
-    // Berührungen
+    const x = NETX + p.side * 150;
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    ctx.strokeText(p.score, x, top); ctx.fillStyle = p.color; ctx.fillText(p.score, x, top);
     for (let i = 0; i < MAX_TOUCHES; i++) {
       ctx.fillStyle = i < p.touches ? p.color : 'rgba(255,255,255,.6)';
-      ctx.beginPath(); ctx.arc(x - 16 + i * 16, 82, 5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(x - 15 + i * 15, top + 64, 5, 0, 7); ctx.fill();
     }
     if (server === p && (state === 'serve' || state === 'play')) {
       ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = 'rgba(23,50,74,.6)'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(x + p.side * 52, 42, 7, 0, 7); ctx.fill(); ctx.stroke();
-      ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.arc(x, top + 82, 5, 0, 7); ctx.fill(); ctx.stroke();
     }
   }
   if (msgT > 0 && state !== 'menu') {
     ctx.globalAlpha = Math.min(1, msgT * 3);
-    ctx.font = '800 38px system-ui, sans-serif'; ctx.textAlign = 'center';
-    ctx.strokeText(message, W / 2, 150); ctx.fillStyle = '#17324a'; ctx.fillText(message, W / 2, 150);
+    ctx.font = '800 34px system-ui, sans-serif';
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    ctx.strokeText(message, W / 2, GROUND * .36); ctx.fillStyle = '#17324a'; ctx.fillText(message, W / 2, GROUND * .36);
     ctx.globalAlpha = 1;
+  }
+  if (showHint && state === 'serve') {
+    ctx.fillStyle = 'rgba(23,50,74,.7)'; ctx.font = '700 17px system-ui, sans-serif';
+    ctx.fillText('Finger ziehen = laufen', W / 2, GROUND + 50);
+    ctx.fillText('Hochwischen = springen', W / 2, GROUND + 76);
   }
 }
 function render(t) {
   drawBackground(t);
   drawNet();
+  drawTouchMarks();
   players.forEach(p => drawFrog(p, t));
   drawBall();
   for (const q of particles) {
@@ -474,17 +492,26 @@ function render(t) {
   drawHUD();
 }
 
-// ---------- Hauptschleife ----------
-function resize() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const r = canvas.getBoundingClientRect();
-  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+// ---------- Layout: Hochformat füllt den ganzen Bildschirm ----------
+function layout() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const aspect = Math.max(1.5, Math.min(2.3, vh / vw));
+  const cssW = Math.min(vw, vh / aspect), cssH = cssW * aspect;
+  stage.style.width = cssW + 'px'; stage.style.height = cssH + 'px';
+  const newH = Math.round(W * aspect), shift = (newH - PAD) - GROUND;
+  H = newH; GROUND = H - PAD; NETTOP = GROUND - NET_H;
+  players.forEach(p => { p.y += shift; });
+  ball.y += shift;
+  for (const q of particles) q.y += shift;
+  safeTop = $('probe').offsetHeight * W / cssW;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
   ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
 }
 let last = 0, acc = 0;
 function frame(ms) {
   const now = ms / 1000;
-  let dt = Math.min(.05, now - last); last = now;
+  const dt = Math.min(.05, now - last); last = now;
   if (!paused && state !== 'menu' && state !== 'over') {
     acc += dt;
     while (acc >= STEP) { step(STEP); acc -= STEP; }
@@ -493,7 +520,50 @@ function frame(ms) {
   requestAnimationFrame(frame);
 }
 
-// ---------- Eingabe ----------
+// ---------- Touch: Finger ziehen = laufen, hochwischen = springen ----------
+const SWIPE_UP = 22;          // CSS-Pixel
+const pointers = new Map();   // pointerId -> { p, refY, refT }
+const toX = e => { const r = canvas.getBoundingClientRect(); return (e.clientX - r.left) / r.width * W; };
+function playerFor(x) {
+  if (mode === 'demo') return null;
+  return mode === '2p' ? (x < NETX ? P1 : P2) : P1;
+}
+function releaseAll() {
+  pointers.clear();
+  players.forEach(p => { p.targetX = null; if (!p.ai) p.in = { left: false, right: false, jump: false }; });
+}
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (state === 'menu' || state === 'over' || paused) return;
+  const x = toX(e), p = playerFor(x);
+  if (!p) return;
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  const steering = [...pointers.values()].some(q => q.p === p && q.steer);
+  if (steering) { p.jumpBuf = .2; pointers.set(e.pointerId, { p, steer: false }); return; }  // zweiter Finger = Sprung
+  p.targetX = x;
+  pointers.set(e.pointerId, { p, steer: true, refY: e.clientY, refT: e.timeStamp });
+});
+canvas.addEventListener('pointermove', e => {
+  const q = pointers.get(e.pointerId);
+  if (!q || !q.steer) return;
+  e.preventDefault();
+  q.p.targetX = toX(e);
+  // Sprung: schnelle Bewegung nach oben
+  if (e.clientY > q.refY || e.timeStamp - q.refT > 170) { q.refY = e.clientY; q.refT = e.timeStamp; }
+  else if (q.refY - e.clientY > SWIPE_UP) { q.p.jumpBuf = .2; q.refY = e.clientY; q.refT = e.timeStamp; }
+});
+function pointerEnd(e) {
+  const q = pointers.get(e.pointerId);
+  if (!q) return;
+  pointers.delete(e.pointerId);
+  if (q.steer) q.p.targetX = null;
+}
+canvas.addEventListener('pointerup', pointerEnd);
+canvas.addEventListener('pointercancel', pointerEnd);
+for (const ev of ['contextmenu', 'gesturestart', 'dblclick']) document.addEventListener(ev, e => e.preventDefault());
+document.addEventListener('touchmove', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+
+// ---------- Tastatur (für den Schreibtisch) ----------
 const KEYMAP = {
   KeyA: [P1, 'left'], KeyD: [P1, 'right'], KeyW: [P1, 'jump'],
   ArrowLeft: [P2, 'left'], ArrowRight: [P2, 'right'], ArrowUp: [P2, 'jump'],
@@ -502,7 +572,7 @@ function key(e, down) {
   const m = KEYMAP[e.code];
   if (m) {
     let [p, k] = m;
-    if (mode === '1p') p = P1;            // im Einzelspiel steuern beide Tastensätze Grün
+    if (mode === '1p') p = P1;
     if (!p.ai) p.in[k] = down;
     e.preventDefault();
   } else if (e.code === 'Space') {
@@ -515,28 +585,24 @@ function key(e, down) {
 }
 addEventListener('keydown', e => key(e, true));
 addEventListener('keyup', e => key(e, false));
-addEventListener('blur', () => { players.forEach(p => { if (!p.ai) p.in = { left: false, right: false, jump: false }; }); });
+addEventListener('blur', releaseAll);
 document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
 
-const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-function updateTouchUI() {
-  $('touch').classList.toggle('on', isTouch && mode === '1p' && (state !== 'menu' && state !== 'over'));
+// ---------- Knöpfe ----------
+function goFullscreen() {
+  if (!matchMedia('(pointer: coarse)').matches) return;
+  try {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement) Promise.resolve(req.call(el)).catch(() => {});
+    if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(() => {});
+  } catch (e) {}
 }
-for (const btn of document.querySelectorAll('#touch button')) {
-  const set = v => e => {
-    e.preventDefault(); btn.classList.toggle('down', v);
-    if (!P1.ai) P1.in[btn.dataset.k] = v;
-  };
-  btn.addEventListener('pointerdown', e => { btn.setPointerCapture(e.pointerId); set(true)(e); });
-  btn.addEventListener('pointerup', set(false));
-  btn.addEventListener('pointercancel', set(false));
-  btn.addEventListener('contextmenu', e => e.preventDefault());
-}
-
 function toggleSound() { soundOn = !soundOn; $('btnSound').style.opacity = soundOn ? 1 : .4; }
-$('btn1p').onclick = () => startGame('1p');
-$('btn2p').onclick = () => startGame('2p');
-$('btnDemo').onclick = () => startGame('demo');
+const begin = m => () => { goFullscreen(); startGame(m); };
+$('btn1p').onclick = begin('1p');
+$('btn2p').onclick = begin('2p');
+$('btnDemo').onclick = begin('demo');
 $('btnAgain').onclick = () => startGame(mode);
 $('btnMenu').onclick = $('btnQuit').onclick = toMenu;
 $('btnResume').onclick = () => setPaused(false);
@@ -547,9 +613,10 @@ for (const b of document.querySelectorAll('#diff button')) b.onclick = () => {
   document.querySelectorAll('#diff button').forEach(x => x.classList.toggle('sel', x === b));
 };
 
-addEventListener('resize', resize);
-resize();
-ball.x = NETX - 200; ball.y = 250;
+addEventListener('resize', layout);
+addEventListener('orientationchange', () => setTimeout(layout, 200));
+ball.x = P1.homeX; ball.y = GROUND - 170;
+layout();
 requestAnimationFrame(frame);
 
 // Für automatisierte Tests
