@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, ">
+<title>Froschvolley</title>
+<style>
+  :root { --ink:#17324a; --panel:rgba(255,255,255,.93); --accent:#2f9e57; --accent2:#e2703a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#10212f; color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overscroll-behavior:none; }
+  body { display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; width:min(100vw, calc(100vh * 1.6)); aspect-ratio:8/5;
+    touch-action:none; user-select:none; -webkit-user-select:none; }
+  canvas { width:100%; height:100%; display:block; border-radius:10px; }
+  .overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(16,33,47,.45); border-radius:10px; }
+  .overlay[hidden] { display:none; }
+  .card { background:var(--panel); border-radius:16px; padding:clamp(12px,3vw,28px) clamp(16px,4vw,36px);
+    text-align:center; max-width:92%; max-height:96%; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+  h1 { margin:0 0 .2em; font-size:clamp(22px,5vw,44px); letter-spacing:.02em; }
+  h1 span { color:var(--accent); }
+  p { margin:.4em 0; font-size:clamp(12px,1.9vw,16px); }
+  .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:.8em 0; }
+  button { font:inherit; font-weight:700; font-size:clamp(13px,2.1vw,18px); border:0; border-radius:10px;
+    padding:.6em 1.1em; cursor:pointer; background:var(--accent); color:#fff; }
+  button.alt { background:var(--accent2); }
+  button.ghost { background:#dfe7ee; color:var(--ink); }
+  button.sel { outline:3px solid var(--ink); }
+  button:focus-visible { outline:3px solid #ffd23f; }
+  kbd { background:#e8eef3; border-radius:5px; padding:.05em .45em; border:1px solid #c3cfd9; font:inherit; font-weight:700; }
+  .keys { display:grid; grid-template-columns:auto auto; gap:.2em 1.2em; justify-content:center; text-align:left;
+    font-size:clamp(12px,1.9vw,16px); }
+  #corner { position:absolute; top:2%; left:50%; transform:translateX(-50%); display:flex; gap:6px; }
+  #corner button { padding:.3em .6em; background:rgba(255,255,255,.55); color:var(--ink); font-size:clamp(11px,1.7vw,15px); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="800" height="500"></canvas>
+
+  <div id="corner">
+    <button id="btnPause" title="Pause (P)">II</button>
+    <button id="btnSound" title="Ton (M)">♪</button>
+  </div>
+
+  <div class="overlay" id="menu">
+    <div class="card">
+      <h1>Frosch<span>volley</span></h1>
+      <p>Halte den Ball in der Luft und bring ihn übers Netz. Höchstens 3 Berührungen pro Seite, wer zuerst <b>15</b> Punkte (mit 2 Vorsprung) hat, gewinnt.</p>
+      <div class="row" id="diff">
+        <button class="ghost" data-d="0">Leicht</button>
+        <button class="ghost sel" data-d="1">Mittel</button>
+        <button class="ghost" data-d="2">Schwer</button>
+      </div>
+      <div class="row">
+        <button id="btn1p">1 Spieler</button>
+        <button id="btn2p" class="alt">2 Spieler</button>
+        <button id="btnDemo" class="ghost">Demo</button>
+      </div>
+      <div class="keys">
+        <span>1 Spieler</span><span><kbd>←</kbd> <kbd>→</kbd> laufen, <kbd>↑</kbd> springen</span>
+        <span>2 Spieler</span><span>Grün: <kbd>A</kbd> <kbd>D</kbd> <kbd>W</kbd> · Orange: <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd></span>
+        <span>Sonstiges</span><span><kbd>P</kbd> Pause, <kbd>M</kbd> Ton</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pause" hidden>
+    <div class="card">
+      <h1>Pause</h1>
+      <div class="row">
+        <button id="btnResume">Weiter</button>
+        <button id="btnQuit" class="ghost">Menü</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="over" hidden>
+    <div class="card">
+      <h1 id="overTitle"></h1>
+      <p id="overScore"></p>
+      <div class="row">
+        <button id="btnAgain">Nochmal</button>
+        <button id="btnMenu" class="ghost">Menü</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Konstanten (logische Einheiten: px, px/s) ----------
+const W = 800, H = 500, GROUND = 440;
+const NETX = 400, NETHW = 5, NETTOP = 300;
+const PR = 34, BR = 24;                 // Radius Frosch / Ball
+const P_SPEED = 340, P_JUMP = 820, P_GRAV = 2200;
+const B_GRAV = 900, B_HIT = 600, B_MAX = 1000;
+const WIN_SCORE = 15, MAX_TOUCHES = 3;
+const STEP = 1 / 120;
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
+
+// ---------- Zustand ----------
+const mkPlayer = (side, color, belly, name) => ({
+  side, color, belly, name,
+  homeX: NETX + side * 200, x: NETX + side * 200, y: GROUND - PR, vx: 0, vy: 0,
+  score: 0, touches: 0, cool: 0, ai: false, blink: 0,
+  aiOff: 20, aiErr: 0, aiJump: false,
+  in: { left: false, right: false, jump: false },
+});
+const P1 = mkPlayer(-1, '#3fae5f', '#c9efb0', 'Grün');
+const P2 = mkPlayer(1, '#e2793f', '#ffe0b8', 'Orange');
+const players = [P1, P2];
+const ball = { x: 0, y: 0, px: 0, vx: 0, vy: 0, rot: 0 };
+
+let state = 'menu';          // menu | serve | play | point | over
+let paused = false, timer = 0, server = P1, message = '', msgT = 0;
+let difficulty = 1, mode = '1p', soundOn = true;
+let particles = [];
+const DIFF = [
+  { speed: .72, err: 22, jump: .15 },
+  { speed: .9,  err: 10, jump: .4 },
+  { speed: 1,   err: 3,  jump: .65 },
+];
+
+// ---------- Ton ----------
+let actx = null;
+function beep(freq, dur, type = 'sine', vol = .15, slide = 0) {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur);
+  } catch (e) { /* kein Ton verfügbar */ }
+}
+const sfx = {
+  hit: () => beep(300 + Math.random() * 120, .09, 'triangle', .2, 200),
+  net: () => beep(140, .08, 'square', .06),
+  point: () => { beep(880, .12, 'square', .08); setTimeout(() => beep(660, .25, 'square', .08), 130); },
+  win: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, .22, 'triangle', .18), i * 140)),
+};
+
+// ---------- Spielablauf ----------
+function startGame(m) {
+  mode = m;
+  P1.ai = m === 'demo'; P2.ai = m !== '2p';
+  players.forEach(p => { p.score = 0; });
+  server = P1; particles = [];
+  $('menu').hidden = true; $('over').hidden = true; $('pause').hidden = true;
+  paused = false;
+  updateTouchUI();
+  newRally();
+}
+function newRally() {
+  players.forEach(p => { p.x = p.homeX; p.y = GROUND - PR; p.vx = p.vy = 0; p.touches = 0; p.cool = 0; rollAI(p); });
+  ball.x = ball.px = server.homeX; ball.y = 250; ball.vx = ball.vy = 0;
+  state = 'serve';
+}
+function toMenu() {
+  state = 'menu'; paused = false;
+  $('menu').hidden = false; $('over').hidden = true; $('pause').hidden = true;
+  updateTouchUI();
+}
+function setPaused(v) {
+  if (state === 'menu' || state === 'over') return;
+  paused = v; $('pause').hidden = !v;
+}
+function award(winner, text) {
+  if (state !== 'play' && state !== 'serve') return;
+  winner.score++; server = winner; state = 'point'; timer = 1.5;
+  message = text; msgT = 1.5; sfx.point();
+}
+function afterPoint() {
+  const lead = Math.abs(P1.score - P2.score), top = Math.max(P1.score, P2.score);
+  if (top >= WIN_SCORE && lead >= 2) {
+    state = 'over';
+    const w = P1.score > P2.score ? P1 : P2;
+    $('overTitle').textContent = `${w.name} gewinnt!`;
+    $('overTitle').style.color = w.color;
+    $('overScore').textContent = `${P1.score} : ${P2.score}`;
+    $('over').hidden = false; sfx.win(); updateTouchUI();
+  } else newRally();
+}
+function rollAI(p) {
+  const d = DIFF[difficulty];
+  p.aiErr = (Math.random() * 2 - 1) * d.err;
+  p.aiJump = Math.random() < d.jump;
+}
+function onTouch(p) {
+  sfx.hit();
+  for (let i = 0; i < 6; i++) particles.push({
+    x: ball.x, y: ball.y, vx: (Math.random() - .5) * 260, vy: (Math.random() - .7) * 260, t: .35, c: '#fff' });
+  if (state === 'serve') state = 'play';
+  if (state !== 'play') return;
+  const other = p === P1 ? P2 : P1;
+  other.touches = 0; p.touches++;
+  players.forEach(rollAI);
+  if (p.touches > MAX_TOUCHES) award(other, 'Zu viele Berührungen!');
+}
+
+// ---------- KI ----------
+function predict(targetY) {
+  let x = ball.x, y = ball.y, vx = ball.vx, vy = ball.vy;
+  const dt = 1 / 60;
+  for (let i = 0; i < 360; i++) {
+    if (y >= targetY && vy > 0) break;
+    vy += B_GRAV * dt;
+    const nx = x + vx * dt; y += vy * dt;
+    if (y > NETTOP && (x - NETX) * (nx - NETX) <= 0 && x !== nx) vx = -vx * .8;
+    else x = nx;
+    if (x < BR) { x = BR; vx = -vx; }
+    if (x > W - BR) { x = W - BR; vx = -vx; }
+  }
+  return x;
+}
+function think(p) {
+  const s = p.side, d = DIFF[difficulty], inp = p.in;
+  let target = p.homeX, jump = false;
+  const contact = PR + BR;
+  if (state === 'serve') {
+    if (server === p) {
+      target = ball.x + s * 22;
+      jump = Math.abs(p.x - target) < 8;
+    }
+  } else if (state === 'play') {
+    const land = predict(GROUND - 2 * PR - BR + 8);
+    const mine = (land - NETX) * s > 0 || ((ball.x - NETX) * s > 0 && ball.y > NETTOP);
+    if (mine) {
+      // Abschlagwinkel so wählen, dass der Ball übers Netz kommt
+      const need = Math.min(Math.abs(land - NETX) + 140, 390);
+      const theta = .5 * Math.asin(Math.min(1, need * B_GRAV / (B_HIT * B_HIT)));
+      const off = contact * Math.sin(Math.max(theta, .12));
+      target = land + s * off + p.aiErr;
+      const dx = Math.abs(ball.x + s * off - p.x), dy = p.y - ball.y;
+      if (p.aiJump && ball.vy > 0 && dx < 30 && dy > 110 && dy < 190) jump = true;
+      // Notfall: Ball fällt außer Reichweite
+      if (ball.vy > 0 && dy < 120 && dx > 50 && dx < 120) jump = true;
+    }
+  }
+  const lo = s < 0 ? PR : NETX + NETHW + PR, hi = s < 0 ? NETX - NETHW - PR : W - PR;
+  target = Math.max(lo, Math.min(hi, target));
+  const diff = target - p.x;
+  inp.left = diff < -5; inp.right = diff > 5; inp.jump = jump;
+  p.aiSpeed = d.speed;
+}
+
+// ---------- Physik ----------
+function stepPlayer(p, dt) {
+  if (p.ai) think(p);
+  const inp = p.in, sp = P_SPEED * (p.ai ? p.aiSpeed : 1);
+  p.vx = ((inp.right ? 1 : 0) - (inp.left ? 1 : 0)) * sp;
+  const onGround = p.y >= GROUND - PR - .01;
+  if (inp.jump && onGround) p.vy = -P_JUMP;
+  p.vy += P_GRAV * dt;
+  p.x += p.vx * dt; p.y += p.vy * dt;
+  if (p.y > GROUND - PR) { p.y = GROUND - PR; p.vy = 0; }
+  const lo = p.side < 0 ? PR : NETX + NETHW + PR, hi = p.side < 0 ? NETX - NETHW - PR : W - PR;
+  if (p.x < lo) p.x = lo; if (p.x > hi) p.x = hi;
+  p.cool -= dt;
+}
+function stepBall(dt) {
+  const b = ball;
+  b.px = b.x;
+  if (state !== 'serve') {
+    b.vy += B_GRAV * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.rot += b.vx * dt / BR;
+  }
+  // Wände
+  if (b.x < BR) { b.x = BR; b.vx = Math.abs(b.vx); }
+  if (b.x > W - BR) { b.x = W - BR; b.vx = -Math.abs(b.vx); }
+  // Netz
+  const reach = BR + NETHW;
+  if (b.y > NETTOP) {
+    if (Math.abs(b.x - NETX) < reach) {
+      const side = b.px < NETX ? -1 : 1;
+      b.x = NETX + side * reach;
+      if (b.vx * side < 0) { b.vx = -b.vx * .8; sfx.net(); }
+    }
+  } else {
+    const dx = b.x - NETX, dy = b.y - NETTOP, d = Math.hypot(dx, dy);
+    if (d < reach && d > 0) {
+      const nx = dx / d, ny = dy / d, vn = b.vx * nx + b.vy * ny;
+      b.x = NETX + nx * reach; b.y = NETTOP + ny * reach;
+      if (vn < 0) { b.vx -= 1.8 * vn * nx; b.vy -= 1.8 * vn * ny; sfx.net(); }
+    }
+  }
+  // Frösche
+  for (const p of players) {
+    const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy), R = PR + BR;
+    if (d < R) {
+      const nx = d > 0 ? dx / d : 0, ny = d > 0 ? dy / d : -1;
+      b.x = p.x + nx * R; b.y = p.y + ny * R;
+      b.vx = nx * B_HIT + p.vx * .4; b.vy = ny * B_HIT + p.vy * .25;
+      const sp = Math.hypot(b.vx, b.vy);
+      if (sp > B_MAX) { b.vx *= B_MAX / sp; b.vy *= B_MAX / sp; }
+      if (p.cool <= 0) { p.cool = .18; onTouch(p); }
+    }
+  }
+  // Boden
+  if (b.y > GROUND - BR) {
+    b.y = GROUND - BR;
+    if (state === 'play') {
+      for (let i = 0; i < 12; i++) particles.push({
+        x: b.x, y: GROUND, vx: (Math.random() - .5) * 320, vy: -Math.random() * 260, t: .5, c: '#e9d59a' });
+      award(b.x < NETX ? P2 : P1, 'Punkt!');
+    }
+    b.vy = -Math.abs(b.vy) * .55; b.vx *= .8;
+    if (Math.abs(b.vy) < 60) b.vy = 0;
+  }
+}
+function step(dt) {
+  players.forEach(p => stepPlayer(p, dt));
+  stepBall(dt);
+  for (const q of particles) { q.vy += 900 * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.t -= dt; }
+  particles = particles.filter(q => q.t > 0);
+  if (msgT > 0) msgT -= dt;
+  if (state === 'point') { timer -= dt; if (timer <= 0) afterPoint(); }
+}
+
+// ---------- Zeichnen ----------
+const clouds = [[120, 70, 1], [420, 45, .7], [650, 95, 1.2]];
+function drawBackground(t) {
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND);
+  g.addColorStop(0, '#6ec3f4'); g.addColorStop(1, '#d8f1ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // Sonne
+  ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(690, 80, 38, 0, 7); ctx.fill();
+  // Wolken
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  for (const [cx, cy, s] of clouds) {
+    const x = ((cx + t * 6 * s) % (W + 200)) - 100;
+    for (const [ox, oy, rx, ry] of [[0, 0, 46, 16], [26, -12, 28, 16], [-24, -8, 22, 13]]) {
+      ctx.beginPath(); ctx.ellipse(x + ox * s, cy + oy * s, rx * s, ry * s, 0, 0, 7); ctx.fill();
+    }
+  }
+  // Hügel
+  ctx.fillStyle = '#9ad48a';
+  ctx.beginPath(); ctx.moveTo(0, GROUND);
+  ctx.quadraticCurveTo(180, 300, 380, GROUND - 40); ctx.quadraticCurveTo(600, 330, 800, GROUND - 60);
+  ctx.lineTo(W, GROUND); ctx.fill();
+  // Schilf
+  ctx.strokeStyle = '#5c9a55'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (let i = 0; i < 14; i++) {
+    const x = 20 + i * 61 + (i % 3) * 9, h = 40 + (i * 37 % 30), sway = Math.sin(t * 1.3 + i) * 4;
+    ctx.beginPath(); ctx.moveTo(x, GROUND); ctx.quadraticCurveTo(x, GROUND - h / 2, x + sway, GROUND - h); ctx.stroke();
+    ctx.fillStyle = '#7a5230'; ctx.beginPath(); ctx.ellipse(x + sway, GROUND - h, 3.5, 9, 0, 0, 7); ctx.fill();
+  }
+  // Boden
+  ctx.fillStyle = '#e9d59a'; ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = '#d9c382'; ctx.fillRect(0, GROUND, W, 5);
+  ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(8, GROUND + 22, W - 16, 3);
+}
+function drawNet() {
+  ctx.fillStyle = '#7a5230';
+  ctx.beginPath(); ctx.roundRect(NETX - NETHW, NETTOP - NETHW, NETHW * 2, GROUND - NETTOP + NETHW, NETHW); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(NETX - 2, NETTOP, 2, GROUND - NETTOP);
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(NETX, NETTOP, NETHW + 1.5, 0, 7); ctx.fill();
+}
+function drawFrog(p, t) {
+  const stretch = Math.max(-.14, Math.min(.16, -p.vy / 4500));
+  const sy = 1 + stretch, sx = 1 / sy;
+  // Schatten
+  const hgt = (GROUND - PR - p.y) / 200;
+  ctx.fillStyle = `rgba(0,0,0,${.2 - Math.min(.12, hgt * .1)})`;
+  ctx.beginPath(); ctx.ellipse(p.x, GROUND + 4, PR * (1 - Math.min(.4, hgt * .3)), 6, 0, 0, 7); ctx.fill();
+
+  ctx.save(); ctx.translate(p.x, p.y + PR); ctx.scale(sx, sy); ctx.translate(0, -PR);
+  // Füße
+  ctx.fillStyle = p.color;
+  ctx.beginPath(); ctx.ellipse(-20, PR - 3, 13, 6, 0, 0, 7); ctx.ellipse(20, PR - 3, 13, 6, 0, 0, 7); ctx.fill();
+  // Körper
+  ctx.beginPath(); ctx.ellipse(0, 2, PR + 2, PR - 2, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = p.belly; ctx.beginPath(); ctx.ellipse(0, 14, PR - 10, PR - 16, 0, 0, 7); ctx.fill();
+  // Augen
+  const ang = Math.atan2(ball.y - (p.y - 26), ball.x - p.x);
+  const blink = (t * 1.1 + p.side) % 3.7 < .12;
+  for (const ex of [-15, 15]) {
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(ex, -24, 13, 0, 7); ctx.fill();
+    if (blink) {
+      ctx.strokeStyle = '#17324a'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(ex - 7, -24); ctx.lineTo(ex + 7, -24); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ex, -25, 9.5, 0, 7); ctx.fill();
+      ctx.fillStyle = '#17324a'; ctx.beginPath();
+      ctx.arc(ex + Math.cos(ang) * 4, -25 + Math.sin(ang) * 4, 4.6, 0, 7); ctx.fill();
+    }
+  }
+  // Mund
+  ctx.strokeStyle = '#17324a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, -6, 17, .25 * Math.PI, .75 * Math.PI); ctx.stroke();
+  ctx.restore();
+}
+function drawBall() {
+  const b = ball;
+  if (b.y < -BR) {                       // Ball über dem Bildrand
+    ctx.fillStyle = '#e2443a';
+    ctx.beginPath(); ctx.moveTo(b.x, 6); ctx.lineTo(b.x - 9, 22); ctx.lineTo(b.x + 9, 22); ctx.fill();
+    return;
+  }
+  const hgt = Math.max(0, (GROUND - BR - b.y) / 300);
+  ctx.fillStyle = `rgba(0,0,0,${Math.max(.05, .2 - hgt * .12)})`;
+  ctx.beginPath(); ctx.ellipse(b.x, GROUND + 4, BR * Math.max(.4, 1 - hgt * .4), 5, 0, 0, 7); ctx.fill();
+  ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+  const cols = ['#ffd23f', '#fff', '#3fa7e2', '#fff', '#e2443a', '#fff'];
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.arc(0, 0, BR, i * Math.PI / 3, (i + 1) * Math.PI / 3); ctx.fill();
+  }
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(23,50,74,.5)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(b.x, b.y, BR, 0, 7); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.ellipse(b.x - 8, b.y - 9, 7, 4, -.6, 0, 7); ctx.fill();
+}
+function drawHUD() {
+  ctx.textBaseline = 'top'; ctx.font = '800 54px system-ui, sans-serif';
+  ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  for (const p of players) {
+    const x = NETX + p.side * 300;
+    ctx.textAlign = 'center';
+    ctx.strokeText(p.score, x, 14); ctx.fillStyle = p.color; ctx.fillText(p.score, x, 14);
+    // Berührungen
+    for (let i = 0; i < MAX_TOUCHES; i++) {
+      ctx.fillStyle = i < p.touches ? p.color : 'rgba(255,255,255,.6)';
+      ctx.beginPath(); ctx.arc(x - 16 + i * 16, 82, 5, 0, 7); ctx.fill();
+    }
+    if (server === p && (state === 'serve' || state === 'play')) {
+      ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = 'rgba(23,50,74,.6)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x + p.side * 52, 42, 7, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(255,255,255,.9)';
+    }
+  }
+  if (msgT > 0 && state !== 'menu') {
+    ctx.globalAlpha = Math.min(1, msgT * 3);
+    ctx.font = '800 38px system-ui, sans-serif'; ctx.textAlign = 'center';
+    ctx.strokeText(message, W / 2, 150); ctx.fillStyle = '#17324a'; ctx.fillText(message, W / 2, 150);
+    ctx.globalAlpha = 1;
+  }
+}
+function render(t) {
+  drawBackground(t);
+  drawNet();
+  players.forEach(p => drawFrog(p, t));
+  drawBall();
+  for (const q of particles) {
+    ctx.globalAlpha = Math.min(1, q.t * 3); ctx.fillStyle = q.c;
+    ctx.beginPath(); ctx.arc(q.x, q.y, 3, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawHUD();
+}
+
+// ---------- Hauptschleife ----------
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+}
+let last = 0, acc = 0;
+function frame(ms) {
+  const now = ms / 1000;
+  let dt = Math.min(.05, now - last); last = now;
+  if (!paused && state !== 'menu' && state !== 'over') {
+    acc += dt;
+    while (acc >= STEP) { step(STEP); acc -= STEP; }
+  }
+  render(now);
+  requestAnimationFrame(frame);
+}
+
+// ---------- Eingabe ----------
+const KEYMAP = {
+  KeyA: [P1, 'left'], KeyD: [P1, 'right'], KeyW: [P1, 'jump'],
+  ArrowLeft: [P2, 'left'], ArrowRight: [P2, 'right'], ArrowUp: [P2, 'jump'],
+};
+function key(e, down) {
+  const m = KEYMAP[e.code];
+  if (m) {
+    let [p, k] = m;
+    if (mode === '1p') p = P1;            // im Einzelspiel steuern beide Tastensätze Grün
+    if (!p.ai) p.in[k] = down;
+    e.preventDefault();
+  } else if (e.code === 'Space') {
+    if (mode !== '2p' && !P1.ai) P1.in.jump = down;
+    e.preventDefault();
+  } else if (down && !e.repeat) {
+    if (e.code === 'KeyP' || e.code === 'Escape') setPaused(!paused);
+    if (e.code === 'KeyM') toggleSound();
+  }
+}
+addEventListener('keydown', e => key(e, true));
+addEventListener('keyup', e => key(e, false));
+addEventListener('blur', () => { players.forEach(p => { if (!p.ai) p.in = { left: false, right: false, jump: false }; }); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) setPaused(true); });
+
+function updateTouchUI() {}
+
+function toggleSound() { soundOn = !soundOn; $('btnSound').style.opacity = soundOn ? 1 : .4; }
+$('btn1p').onclick = () => startGame('1p');
+$('btn2p').onclick = () => startGame('2p');
+$('btnDemo').onclick = () => startGame('demo');
+$('btnAgain').onclick = () => startGame(mode);
+$('btnMenu').onclick = $('btnQuit').onclick = toMenu;
+$('btnResume').onclick = () => setPaused(false);
+$('btnPause').onclick = () => setPaused(!paused);
+$('btnSound').onclick = toggleSound;
+for (const b of document.querySelectorAll('#diff button')) b.onclick = () => {
+  difficulty = +b.dataset.d;
+  document.querySelectorAll('#diff button').forEach(x => x.classList.toggle('sel', x === b));
+};
+
+addEventListener('resize', resize);
+resize();
+ball.x = NETX - 200; ball.y = 250;
+requestAnimationFrame(frame);
+
+// Für automatisierte Tests
+window.__game = { step, startGame, get state() { return state; }, players, ball, setDifficulty: d => { difficulty = d; } };
+})();
+</script>
+</body>
+</html>
