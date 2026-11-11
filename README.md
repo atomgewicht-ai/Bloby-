@@ -33,4 +33,4 @@ Im 2-Spieler-Modus teilen sich beide ein Handy: Jeder steuert mit dem Finger auf
 - 2 Spieler: Grün `A`/`D`/`W`, Orange `←`/`→`/`↑`
 - `P` Pause, `M` Ton
 
-Modi: 1 Spieler gegen den Computer (drei Schwierigkeitsstufen), 2 Spieler, Demo (Computer gegen Computer).
+Modi: 1 Spieler gegen den Computer (vier Schwierigkeitsstufen, von „Anfänger“ bis „Schwer“), 2 Spieler, Demo (Computer gegen Computer).
